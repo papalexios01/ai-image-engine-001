@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { WordPressPost } from '../types';
 import { ImageIcon, SparklesIcon, UploadCloudIcon, ExternalLinkIcon, RefreshCwIcon, BookOpenIcon, FileUpIcon } from './icons/Icons';
@@ -40,7 +39,6 @@ const PostCard: React.FC<Props> = ({ post, isSelected, onToggleSelect, onGenerat
   const canInsert = !!post.generatedImage?.url || !!post.existingImageUrl;
   const canSetFeatured = !!post.generatedImage?.mediaId;
 
-
   return (
     <div className={`bg-surface rounded-lg overflow-hidden border transition-all duration-200 group relative flex flex-col ${isSelected ? 'border-brand-primary shadow-lg scale-[1.02]' : 'border-border hover:border-subtle hover:shadow-md'}`}>
       <div className="relative">
@@ -60,7 +58,7 @@ const PostCard: React.FC<Props> = ({ post, isSelected, onToggleSelect, onGenerat
 
         <div className="w-full h-40 bg-surface-muted flex items-center justify-center">
             {displayImageUrl ? (
-                <img src={displayImageUrl} alt={post.generatedImage?.alt || post.existingImageAltText || stripHtml(post.title.rendered)} className="w-full h-full object-cover" />
+                <img src={displayImageUrl} alt={post.generatedImage?.alt || post.existingImageAltText || stripHtml(post.title.rendered)} className="w-full h-full object-cover" loading="lazy" />
             ) : (
                 <div className="text-center text-muted">
                     <ImageIcon className="w-10 h-10 mx-auto" />
@@ -109,7 +107,7 @@ const PostCard: React.FC<Props> = ({ post, isSelected, onToggleSelect, onGenerat
           <button onClick={onUpload} className="!p-2 bg-surface text-text-secondary border border-border hover:border-emerald-500 hover:text-emerald-500 hover:shadow inline-flex items-center justify-center gap-1.5 text-sm font-semibold py-2 px-3 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-muted" title="Upload Your Own Image">
             <FileUpIcon className="w-4 h-4" />
           </button>
-          <button disabled={!canInsert} onClick={onInsert} className="!p-2 bg-surface text-text-secondary border border-border hover:border-brand-primary hover:text-brand-primary hover:shadow disabled:hover:bg-surface disabled:hover:text-text-secondary disabled:hover:border-border inline-flex items-center justify-center gap-1.5 text-sm font-semibold py-2 px-3 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-muted disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" title="Insert Image into Post">
+          <button disabled={!canInsert} onClick={onInsert} className="!p-2 bg-surface text-text-secondary border border-border hover:border-brand-primary hover:text-brand-primary hover:shadow disabled:hover:bg-surface disabled:hover:text-text-secondary disabled:hover:border-border inline-flex items-center justify-center gap-1.5 text-sm font-semibold py-2 px-3 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-muted disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" title="Insert Image into Post (Auto or Manual)">
             <ImageIcon className="w-4 h-4" />
           </button>
           <button disabled={!canSetFeatured} onClick={onSetFeatured} className="!p-2 bg-surface text-text-secondary border border-border hover:border-brand-primary hover:text-brand-primary hover:shadow disabled:hover:bg-surface disabled:hover:text-text-secondary disabled:hover:border-border inline-flex items-center justify-center gap-1.5 text-sm font-semibold py-2 px-3 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-muted disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" title="Set as Featured Image">
@@ -121,4 +119,9 @@ const PostCard: React.FC<Props> = ({ post, isSelected, onToggleSelect, onGenerat
   );
 };
 
-export default PostCard;
+// CRITICAL FIX: React.memo with custom comparator prevents re-rendering ALL cards
+// when only ONE post's status changes. Only re-renders when the specific post data
+// or selection state changes.
+export default React.memo(PostCard, (prevProps, nextProps) => {
+  return prevProps.post === nextProps.post && prevProps.isSelected === nextProps.isSelected;
+});
