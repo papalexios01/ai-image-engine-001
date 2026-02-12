@@ -3,9 +3,8 @@
 // ═══════════════════════════════════════════════════════════
 
 // ────────────────────────────────────────
-// Enums (MUST be enums, not type aliases,
-// because they are used as runtime values
-// in switch statements in aiService.ts)
+// Enums (MUST be enums — used as runtime
+// values in switch statements)
 // ────────────────────────────────────────
 
 /** Text/Analysis AI provider identifiers */
@@ -30,6 +29,13 @@ export enum AspectRatio {
   Square = '1:1',
   Landscape = '16:9',
   Portrait = '9:16',
+}
+
+/** Image output format options */
+export enum ImageFormat {
+  PNG = 'png',
+  JPEG = 'jpeg',
+  WEBP = 'webp',
 }
 
 // ────────────────────────────────────────
@@ -62,12 +68,14 @@ export interface ImageAIConfig {
 
 /** Image generation parameters — style, size, aspect ratio, etc. */
 export interface ImageSettings {
-  /** Style prompt appended to every image generation (e.g., "photorealistic, 4k") */
+  /** Style prompt appended to every image generation */
   style: string;
   /** Negative prompt to avoid unwanted elements */
   negativePrompt?: string;
   /** Aspect ratio for the generated image */
   aspectRatio?: AspectRatio | string;
+  /** Output format */
+  format?: ImageFormat | string;
   /** Image width in pixels */
   width?: number;
   /** Image height in pixels */
@@ -84,7 +92,7 @@ export interface ImageSettings {
   quality?: string;
 }
 
-/** Legacy alias — some components may reference ImageConfig */
+/** Legacy alias */
 export type ImageConfig = ImageSettings;
 
 // ────────────────────────────────────────
@@ -131,7 +139,7 @@ export interface WordPressPost {
     suggestions?: string[];
   };
 
-  // ── Content with image placeholder (cached from AI placement call) ──
+  // ── Content with image placeholder ──
   contentWithPlaceholder?: string;
 
   // ── Processing status ──
@@ -178,7 +186,7 @@ export interface WordPressMediaResponse {
 export interface Configuration {
   wordpress: WordPressConfig;
   ai: {
-    /** AI provider used for text analysis (briefs, alt text, image placement) */
+    /** AI provider used for text analysis */
     analysis: AnalysisAIConfig;
     /** AI provider used for image generation */
     image: ImageAIConfig;
