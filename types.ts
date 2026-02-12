@@ -4,8 +4,15 @@
 
 // ────────────────────────────────────────
 // Enums (MUST be enums — used as runtime
-// values in switch statements)
+// values in switch statements & comparisons)
 // ────────────────────────────────────────
+
+/** Application state — controls which step/view is shown */
+export enum AppState {
+  Configuration = 'configuration',
+  Crawling = 'crawling',
+  Results = 'results',
+}
 
 /** Text/Analysis AI provider identifiers */
 export enum TextAIProvider {
@@ -36,6 +43,22 @@ export enum ImageFormat {
   PNG = 'png',
   JPEG = 'jpeg',
   WEBP = 'webp',
+}
+
+// ────────────────────────────────────────
+// Crawl Progress
+// ────────────────────────────────────────
+
+/** Tracks progress during the WordPress post crawling/fetching step */
+export interface CrawlProgress {
+  /** Number of posts fetched so far */
+  current: number;
+  /** Total number of posts to fetch */
+  total: number;
+  /** Human-readable status message */
+  message?: string;
+  /** Current crawl phase */
+  status?: 'idle' | 'counting' | 'crawling' | 'processing' | 'complete' | 'error';
 }
 
 // ────────────────────────────────────────
