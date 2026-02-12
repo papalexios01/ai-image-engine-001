@@ -82,9 +82,41 @@ const fetchWithTimeout = async (resource: RequestInfo, options: RequestInit = {}
 
 /**
  * Fetches an image from a URL and converts it to a base64 data URL.
+ * Uses a proxy edge function to bypass CORS restrictions for external images.
  */
 const fetchImageAsBase64 = async (imageUrl: string): Promise<string> => {
-    const response = await fetchWithTimeout(imageUrl, {}, 30000); // 30 second timeout
+    if (imageUrl.startsWith('data:')) {
+        return imageUrl;
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseKey) {
+        try {
+            const proxyUrl = `${supabaseUrl}/functions/v1/image-proxy`;
+            const response = await fetchWithTimeout(proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({ imageUrl }),
+            }, 60000);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Proxy request failed with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.base64;
+        } catch (proxyError) {
+            console.warn('Image proxy failed, attempting direct fetch:', proxyError);
+        }
+    }
+
+    const response = await fetchWithTimeout(imageUrl, {}, 30000);
     if (!response.ok) {
         throw new Error(`Failed to fetch image from URL: ${imageUrl}`);
     }

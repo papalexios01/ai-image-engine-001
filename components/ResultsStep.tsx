@@ -6,6 +6,7 @@ import { uploadImage, updatePost, updateMediaAltText } from '../services/wordpre
 import GenerationModal from './GenerationModal';
 import AnalysisModal from './AnalysisModal';
 import BulkAltTextModal from './BulkAltTextModal';
+import UploadImageModal from './UploadImageModal';
 import { ImageIcon, SparklesIcon, UploadCloudIcon, CheckSquare, Square, EditIcon } from './icons/Icons';
 
 
@@ -13,10 +14,11 @@ const MAX_CONCURRENT_JOBS = 20;
 
 type Job = {
   post: WordPressPost;
-  action: 'generate' | 'insert' | 'set_featured';
+  action: 'generate' | 'insert' | 'set_featured' | 'upload_insert';
   payload?: {
     imageUrl: string;
     altText: string;
+    imageDataUrl?: string;
   };
 };
 
@@ -40,6 +42,9 @@ const ResultsStep: React.FC<Props> = ({ initialPosts, config, onReset }) => {
   const [postToAnalyze, setPostToAnalyze] = useState<WordPressPost | null>(null);
 
   const [isAltTextModalOpen, setIsAltTextModalOpen] = useState(false);
+
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [postToUpload, setPostToUpload] = useState<WordPressPost | null>(null);
 
   useEffect(() => {
     if (isModalOpen && jobQueue.length === 0 && activeJobs.length === 0 && totalModalJobs > 0) {
@@ -99,10 +104,40 @@ const ResultsStep: React.FC<Props> = ({ initialPosts, config, onReset }) => {
 
       } else if (action === 'set_featured') {
         if (!currentPost.generatedImage?.mediaId) throw new Error("No generated image media ID found to set as featured.");
-        
+
         updatePostState(post.id, { status: 'setting_featured', statusMessage: 'Setting featured image...' });
         await updatePost(config.wordpress, post.id, { featured_media: currentPost.generatedImage.mediaId });
         updatePostState(post.id, { status: 'success', statusMessage: 'Featured image set!', featured_media: currentPost.generatedImage.mediaId });
+
+      } else if (action === 'upload_insert') {
+        if (!payload?.imageDataUrl || !payload?.altText) throw new Error("Image data and alt text are required.");
+
+        updatePostState(post.id, { status: 'uploading', statusMessage: 'Uploading image...' });
+        const uploadedImage = await uploadImage(config.wordpress, payload.imageDataUrl, `uploaded-img-${post.id}-${Date.now()}.png`, payload.altText, payload.altText);
+
+        updatePostState(post.id, { status: 'analyzing_placement', statusMessage: 'Finding best spot...' });
+        const contentWithPlaceholder = await getContentWithImagePlaceholder(config.ai.analysis, currentPost.content.rendered, currentPost.title.rendered);
+
+        const safeAltText = payload.altText.replace(/"/g, '&quot;');
+        const imageHtml = `<figure class="wp-block-image size-large"><img src="${uploadedImage.source_url}" alt="${safeAltText}"/><figcaption>${payload.altText}</figcaption></figure>`;
+        const newContent = contentWithPlaceholder.replace('<!-- INSERT_IMAGE_HERE -->', imageHtml);
+
+        updatePostState(post.id, { status: 'inserting', statusMessage: 'Updating post...' });
+        await updatePost(config.wordpress, post.id, { content: newContent });
+
+        const generatedImageData = {
+          url: uploadedImage.source_url,
+          mediaId: uploadedImage.id,
+          alt: payload.altText,
+        };
+
+        updatePostState(post.id, {
+          status: 'success',
+          statusMessage: 'Image uploaded & inserted!',
+          imageCount: currentPost.imageCount + 1,
+          content: { ...currentPost.content, rendered: newContent },
+          generatedImage: generatedImageData
+        });
       }
 
     } catch (error) {
@@ -222,7 +257,22 @@ const ResultsStep: React.FC<Props> = ({ initialPosts, config, onReset }) => {
     setPostToAnalyze(post);
     setIsAnalysisModalOpen(true);
   };
-  
+
+  const handleUploadClick = (post: WordPressPost) => {
+    setPostToUpload(post);
+    setIsUploadModalOpen(true);
+  };
+
+  const handleUploadImage = (post: WordPressPost, imageDataUrl: string, altText: string) => {
+    setIsUploadModalOpen(false);
+    setPostToUpload(null);
+    addJobsToQueue([{
+      post,
+      action: 'upload_insert',
+      payload: { imageUrl: '', altText, imageDataUrl }
+    }]);
+  };
+
   const handleGenerateForAllMissing = () => {
     if (window.confirm(`This will generate images for all ${missingImagePosts.length} posts that are missing one. This may consume a significant amount of API credits. Are you sure you want to proceed?`)) {
       handleGenerate(missingImagePosts);
@@ -314,6 +364,14 @@ const ResultsStep: React.FC<Props> = ({ initialPosts, config, onReset }) => {
           onSave={handleSaveAltText}
         />
       )}
+      {isUploadModalOpen && postToUpload && (
+        <UploadImageModal
+          post={postToUpload}
+          config={config}
+          onClose={() => { setIsUploadModalOpen(false); setPostToUpload(null); }}
+          onUpload={handleUploadImage}
+        />
+      )}
 
       <div className="bg-surface rounded-lg shadow-xl p-4 sm:p-6 border border-border">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
@@ -371,8 +429,8 @@ const ResultsStep: React.FC<Props> = ({ initialPosts, config, onReset }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredPosts.map(post => (
-            <PostCard 
-              key={post.id} 
+            <PostCard
+              key={post.id}
               post={post}
               isSelected={selectedPostIds.has(post.id)}
               onToggleSelect={() => handleToggleSelect(post.id)}
@@ -380,6 +438,7 @@ const ResultsStep: React.FC<Props> = ({ initialPosts, config, onReset }) => {
               onInsert={() => handleInsert(post)}
               onSetFeatured={() => handleSetFeatured(post)}
               onAnalyze={() => handleAnalyze(post)}
+              onUpload={() => handleUploadClick(post)}
             />
           ))}
         </div>

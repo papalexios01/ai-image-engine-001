@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { WordPressPost } from '../types';
-import { ImageIcon, SparklesIcon, UploadCloudIcon, ExternalLinkIcon, RefreshCwIcon, BookOpenIcon } from './icons/Icons';
+import { ImageIcon, SparklesIcon, UploadCloudIcon, ExternalLinkIcon, RefreshCwIcon, BookOpenIcon, FileUpIcon } from './icons/Icons';
 
 interface Props {
   post: WordPressPost;
@@ -11,9 +11,10 @@ interface Props {
   onInsert: () => void;
   onSetFeatured: () => void;
   onAnalyze: () => void;
+  onUpload: () => void;
 }
 
-const PostCard: React.FC<Props> = ({ post, isSelected, onToggleSelect, onGenerate, onInsert, onSetFeatured, onAnalyze }) => {
+const PostCard: React.FC<Props> = ({ post, isSelected, onToggleSelect, onGenerate, onInsert, onSetFeatured, onAnalyze, onUpload }) => {
   const needsImage = post.featured_media === 0 || post.imageCount === 0;
 
   const stripHtml = (html: string) => {
@@ -105,6 +106,9 @@ const PostCard: React.FC<Props> = ({ post, isSelected, onToggleSelect, onGenerat
              <RefreshCwIcon className="w-4 h-4"/>
           </button>
           <div className="w-px h-6 bg-border mx-1"></div>
+          <button onClick={onUpload} className="!p-2 bg-surface text-text-secondary border border-border hover:border-emerald-500 hover:text-emerald-500 hover:shadow inline-flex items-center justify-center gap-1.5 text-sm font-semibold py-2 px-3 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-muted" title="Upload Your Own Image">
+            <FileUpIcon className="w-4 h-4" />
+          </button>
           <button disabled={!canInsert} onClick={onInsert} className="!p-2 bg-surface text-text-secondary border border-border hover:border-brand-primary hover:text-brand-primary hover:shadow disabled:hover:bg-surface disabled:hover:text-text-secondary disabled:hover:border-border inline-flex items-center justify-center gap-1.5 text-sm font-semibold py-2 px-3 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-muted disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" title="Insert Image into Post">
             <ImageIcon className="w-4 h-4" />
           </button>
