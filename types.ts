@@ -3,56 +3,75 @@
 // ═══════════════════════════════════════════════════════════
 
 // ────────────────────────────────────────
-// AI Provider Types
+// Enums (MUST be enums, not type aliases,
+// because they are used as runtime values
+// in switch statements in aiService.ts)
 // ────────────────────────────────────────
 
-/** Base AI provider shape shared across text and image providers */
-export type AIProvider = {
-  provider: 'openai' | 'anthropic' | 'google' | 'openrouter' | 'stability' | 'replicate' | 'dalle' | 'midjourney';
-  apiKey: string;
-  model: string;
-  baseUrl?: string;
-};
+/** Text/Analysis AI provider identifiers */
+export enum TextAIProvider {
+  Gemini = 'gemini',
+  OpenAI = 'openai',
+  Groq = 'groq',
+  OpenRouter = 'openrouter',
+}
 
-/** Provider config for text/analysis AI (briefs, alt text, image placement) */
-export type TextAIProvider = AIProvider & {
+/** Image generation AI provider identifiers */
+export enum AIProvider {
+  Gemini = 'gemini',
+  DallE3 = 'dall-e-3',
+  OpenRouter = 'openrouter',
+  Stability = 'stability',
+  Pollinations = 'pollinations',
+}
+
+/** Aspect ratio options for image generation */
+export enum AspectRatio {
+  Square = '1:1',
+  Landscape = '16:9',
+  Portrait = '9:16',
+}
+
+// ────────────────────────────────────────
+// AI Configuration Interfaces
+// ────────────────────────────────────────
+
+/** Configuration for text/analysis AI (briefs, alt text, image placement) */
+export interface AnalysisAIConfig {
+  provider: TextAIProvider;
+  apiKey: string;
+  model?: string;
   maxTokens?: number;
   temperature?: number;
-};
+  baseUrl?: string;
+}
 
-/**
- * Alias used by aiService.ts for the analysis AI configuration.
- * Identical to TextAIProvider — kept for backward compatibility.
- */
-export type AnalysisAIConfig = TextAIProvider;
-
-/**
- * Provider config for image generation AI.
- * Used by aiService.ts for image generation calls.
- */
-export type ImageAIConfig = AIProvider & {
-  /** Optional: number of images to generate per request */
+/** Configuration for image generation AI */
+export interface ImageAIConfig {
+  provider: AIProvider;
+  apiKey: string;
+  model?: string;
+  baseUrl?: string;
   n?: number;
-  /** Optional: response format (e.g., 'b64_json', 'url') */
   responseFormat?: string;
-};
+}
 
 // ────────────────────────────────────────
 // Image Settings
 // ────────────────────────────────────────
 
-/** Image generation parameters — passed alongside the AI config */
-export type ImageSettings = {
+/** Image generation parameters — style, size, aspect ratio, etc. */
+export interface ImageSettings {
   /** Style prompt appended to every image generation (e.g., "photorealistic, 4k") */
   style: string;
   /** Negative prompt to avoid unwanted elements */
   negativePrompt?: string;
+  /** Aspect ratio for the generated image */
+  aspectRatio?: AspectRatio | string;
   /** Image width in pixels */
   width?: number;
   /** Image height in pixels */
   height?: number;
-  /** Aspect ratio string, e.g., "16:9", "1:1" */
-  aspectRatio?: string;
   /** Image size string for APIs that use it, e.g., "1024x1024" */
   size?: string;
   /** Number of generation steps (for Stability/Replicate) */
@@ -63,23 +82,20 @@ export type ImageSettings = {
   seed?: number;
   /** Quality setting (e.g., "standard", "hd") */
   quality?: string;
-};
+}
 
-/**
- * Legacy alias — some parts of the codebase may reference ImageConfig
- * instead of ImageSettings. They are identical.
- */
+/** Legacy alias — some components may reference ImageConfig */
 export type ImageConfig = ImageSettings;
 
 // ────────────────────────────────────────
 // WordPress Types
 // ────────────────────────────────────────
 
-export type WordPressConfig = {
+export interface WordPressConfig {
   siteUrl: string;
   username: string;
   appPassword: string;
-};
+}
 
 /** Mirrors the WordPress REST API response shape for a post */
 export interface WordPressPost {
@@ -198,10 +214,7 @@ export interface ImageAnalysisResult {
   suggestions?: string[];
 }
 
-/**
- * Asset result type — used by aiService when returning
- * uploaded/generated asset metadata.
- */
+/** Asset result type — uploaded/generated asset metadata */
 export interface AssetResult {
   url: string;
   mediaId: number;
