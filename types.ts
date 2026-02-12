@@ -6,27 +6,70 @@
 // AI Provider Types
 // ────────────────────────────────────────
 
-/** Provider options for text/analysis AI (briefs, alt text, placement) */
-export type TextAIProvider = {
-  provider: 'openai' | 'anthropic' | 'google' | 'openrouter';
+/** Base AI provider shape shared across text and image providers */
+export type AIProvider = {
+  provider: 'openai' | 'anthropic' | 'google' | 'openrouter' | 'stability' | 'replicate' | 'dalle' | 'midjourney';
   apiKey: string;
   model: string;
-  /** Optional: base URL override for self-hosted or proxy endpoints */
   baseUrl?: string;
-  /** Optional: max tokens for responses */
+};
+
+/** Provider config for text/analysis AI (briefs, alt text, image placement) */
+export type TextAIProvider = AIProvider & {
   maxTokens?: number;
-  /** Optional: temperature (0–2) */
   temperature?: number;
 };
 
-/** Provider options for image generation AI */
-export type AIProvider = {
-  provider: 'openai' | 'stability' | 'replicate' | 'dalle' | 'midjourney' | 'openrouter';
-  apiKey: string;
-  model: string;
-  /** Optional: base URL override */
-  baseUrl?: string;
+/**
+ * Alias used by aiService.ts for the analysis AI configuration.
+ * Identical to TextAIProvider — kept for backward compatibility.
+ */
+export type AnalysisAIConfig = TextAIProvider;
+
+/**
+ * Provider config for image generation AI.
+ * Used by aiService.ts for image generation calls.
+ */
+export type ImageAIConfig = AIProvider & {
+  /** Optional: number of images to generate per request */
+  n?: number;
+  /** Optional: response format (e.g., 'b64_json', 'url') */
+  responseFormat?: string;
 };
+
+// ────────────────────────────────────────
+// Image Settings
+// ────────────────────────────────────────
+
+/** Image generation parameters — passed alongside the AI config */
+export type ImageSettings = {
+  /** Style prompt appended to every image generation (e.g., "photorealistic, 4k") */
+  style: string;
+  /** Negative prompt to avoid unwanted elements */
+  negativePrompt?: string;
+  /** Image width in pixels */
+  width?: number;
+  /** Image height in pixels */
+  height?: number;
+  /** Aspect ratio string, e.g., "16:9", "1:1" */
+  aspectRatio?: string;
+  /** Image size string for APIs that use it, e.g., "1024x1024" */
+  size?: string;
+  /** Number of generation steps (for Stability/Replicate) */
+  steps?: number;
+  /** CFG scale / guidance scale */
+  guidanceScale?: number;
+  /** Seed for reproducibility (-1 or undefined for random) */
+  seed?: number;
+  /** Quality setting (e.g., "standard", "hd") */
+  quality?: string;
+};
+
+/**
+ * Legacy alias — some parts of the codebase may reference ImageConfig
+ * instead of ImageSettings. They are identical.
+ */
+export type ImageConfig = ImageSettings;
 
 // ────────────────────────────────────────
 // WordPress Types
@@ -69,6 +112,7 @@ export interface WordPressPost {
     score: number;
     altText: string;
     brief: string;
+    suggestions?: string[];
   };
 
   // ── Content with image placeholder (cached from AI placement call) ──
@@ -112,54 +156,25 @@ export interface WordPressMediaResponse {
 }
 
 // ────────────────────────────────────────
-// Image Configuration
-// ────────────────────────────────────────
-
-export type ImageConfig = {
-  /** Style prompt appended to every image generation (e.g. "photorealistic, 4k") */
-  style: string;
-  /** Negative prompt to avoid unwanted elements */
-  negativePrompt?: string;
-  /** Image width in pixels */
-  width?: number;
-  /** Image height in pixels */
-  height?: number;
-  /** Aspect ratio string, e.g. "16:9", "1:1" */
-  aspectRatio?: string;
-  /** Number of generation steps (for Stability/Replicate) */
-  steps?: number;
-  /** CFG scale / guidance scale */
-  guidanceScale?: number;
-  /** Seed for reproducibility (-1 or undefined for random) */
-  seed?: number;
-};
-
-// ────────────────────────────────────────
-// Master Configuration (passed to ResultsStep)
+// Master Configuration
 // ────────────────────────────────────────
 
 export interface Configuration {
   wordpress: WordPressConfig;
   ai: {
     /** AI provider used for text analysis (briefs, alt text, image placement) */
-    analysis: TextAIProvider;
+    analysis: AnalysisAIConfig;
     /** AI provider used for image generation */
-    image: AIProvider;
+    image: ImageAIConfig;
   };
-  image: ImageConfig;
-  /** Optional: fetch settings */
+  image: ImageSettings;
+  /** Optional: fetch/filter settings */
   fetch?: {
-    /** Posts per page when querying WordPress */
     perPage?: number;
-    /** Post status filter */
     postStatus?: 'publish' | 'draft' | 'any';
-    /** Category ID filter */
     categoryId?: number;
-    /** Tag ID filter */
     tagId?: number;
-    /** Search query */
     search?: string;
-    /** Only fetch posts missing featured images */
     missingFeaturedOnly?: boolean;
   };
 }
@@ -183,16 +198,25 @@ export interface ImageAnalysisResult {
   suggestions?: string[];
 }
 
+/**
+ * Asset result type — used by aiService when returning
+ * uploaded/generated asset metadata.
+ */
+export interface AssetResult {
+  url: string;
+  mediaId: number;
+  altText: string;
+  brief?: string;
+}
+
 // ────────────────────────────────────────
 // Component Prop Helpers
 // ────────────────────────────────────────
 
-/** Common icon props used across the app */
 export interface IconProps {
   className?: string;
 }
 
-/** For GenerationModal — tracks batch progress */
 export interface GenerationModalProps {
   posts: WordPressPost[];
   totalJobs: number;
@@ -200,7 +224,6 @@ export interface GenerationModalProps {
   onClearCompleted: () => void;
 }
 
-/** For AnalysisModal */
 export interface AnalysisModalProps {
   post: WordPressPost;
   config: Configuration;
@@ -209,14 +232,12 @@ export interface AnalysisModalProps {
   onRegenerate: (post: WordPressPost) => void;
 }
 
-/** For BulkAltTextModal */
 export interface BulkAltTextModalProps {
   posts: WordPressPost[];
   onClose: () => void;
   onSave: (updates: { mediaId: number; altText: string }[]) => Promise<void>;
 }
 
-/** For UploadImageModal */
 export interface UploadImageModalProps {
   post: WordPressPost;
   config: Configuration;
